@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Generator</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        textarea { width: 100%; height: 150px; margin-bottom: 20px; padding: 10px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        button { background-color: #2980b9; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #1c5980; }
+
+        .success-box {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .btn-download {
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn-view {
+            background-color: #17a2b8;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚀 AI Resume Builder</h1>
+
+    {% if filename %}
+    <div class="success-box">
+        <h2>✅ Resume Generated Successfully!</h2>
+        <p>Your tailored resume is ready.</p>
+        <br>
+        <a href="{{ url_for('static', filename='resumes/' + filename) }}" target="_blank" class="btn-view">👁️ View PDF</a>
+
+        <a href="{{ url_for('download_pdf', filename=filename) }}" class="btn-download">⬇️ Download PDF</a>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/">
+
+        <label for="user-data">Paste your Professional Data (Bio, Work History):</label>
+        <textarea name="user-data" required placeholder="My name is Alex, I am a software engineer..."></textarea>
+
+        <label for="job-post">Paste the Job Description:</label>
+        <textarea name="job-post" required placeholder="We are looking for a Senior Python Developer..."></textarea>
+
+        <button type="submit">✨ Generate Resume</button>
+    </form>
+
+</body>
+</html>
