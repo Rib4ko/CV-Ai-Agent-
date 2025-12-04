@@ -1,3 +1,4 @@
+from io import BytesIO #to save files in ram rather than disk
 import os
 import uuid  # For generating unique filenames
 from flask import Flask, render_template, request, send_file
@@ -5,6 +6,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 import markdown
 from xhtml2pdf import pisa
+
 
 app = Flask(__name__)
 
@@ -46,11 +48,9 @@ def generate_resume_content(data_me, job):
 
 
 # --- PDF GENERATION ---
-def create_pdf(markdown_content, output_path):
-    # Convert Markdown to HTML
+# 1.this function writes to memory instead of a file
+def create_pdf(markdown_content):
     html_body = markdown.markdown(markdown_content)
-
-    # Add CSS Styles
     full_html = f"""
     <html>
     <head>
@@ -68,41 +68,48 @@ def create_pdf(markdown_content, output_path):
     </html>
     """
 
-    # Generate PDF
-    with open(output_path, "wb") as result_file:
-        pisa_status = pisa.CreatePDF(src=full_html, dest=result_file)
+    # Create an in-memory "file"
+    pdf_file = BytesIO()
 
-    return not pisa_status.err
+    # Write PDF to that memory location
+    pisa_status = pisa.CreatePDF(src=full_html, dest=pdf_file)
 
+    if pisa_status.err:
+        return None
+
+    # Rewind the "cursor" to the beginning of the file so it can be read
+    pdf_file.seek(0)
+    return pdf_file
 
 # --- ROUTES ---
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # 1. Get Data from Form
-        data_me = request.form.get("user-data")
-        job_post = request.form.get("job-post")
+        # ... (keep your existing input/file handling logic here) ...
 
-        if not data_me or not job_post:
-            return render_template("index.html", error="Please fill in both fields.")
+        # --- CHANGED LOGIC START ---
+        try:
+            resume_md = generate_resume_content(data_me, job_post)
 
-        # 2. Generate AI Content
-        print("Generating Resume content...")
-        resume_md = generate_resume_content(data_me, job_post)
+            # Generate PDF in memory
+            pdf_file = create_pdf(resume_md)
 
-        # 3. Create Unique Filename
-        unique_filename = f"resume_{uuid.uuid4().hex}.pdf"
-        file_path = os.path.join(PDF_FOLDER, unique_filename)
+            if pdf_file:
+                # Send directly to user as a download
+                return send_file(
+                    pdf_file,
+                    as_attachment=True,
+                    download_name=f"resume_{uuid.uuid4().hex}.pdf",
+                    mimetype='application/pdf'
+                )
+            else:
+                return render_template("index.html", error="Error generating PDF")
 
-        # 4. Save PDF
-        print(f"Saving PDF to {file_path}...")
-        create_pdf(resume_md, file_path)
+        except Exception as e:
+            return render_template("index.html", error=f"An error occurred: {str(e)}")
+        # --- CHANGED LOGIC END ---
 
-        # 5. Render the page again, but pass the filename so we can show the download button
-        return render_template("index.html", filename=unique_filename)
-
-    # GET Request (First visit)
     return render_template("index.html")
 
 
