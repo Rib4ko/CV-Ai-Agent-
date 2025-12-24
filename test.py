@@ -22,7 +22,7 @@ PDF_FOLDER = 'static/resumes'
 os.makedirs(PDF_FOLDER, exist_ok=True)
 
 
-def generate_resume_content(data_me, job):
+def generate_resume_content(data_me, job , language_choice):
     response = client.chat.completions.create(
         model="MiniMax-M2",  # Ensure this matches your provider's model string
         messages=[
@@ -36,6 +36,7 @@ def generate_resume_content(data_me, job):
                 INPUTS:
                 - Candidate Profile: {data_me}
                 - Target Job: {job}
+                -language: {language_choice}
 
                 INSTRUCTIONS:
                 1. Write a Professional Summary mirroring the job requirements.
@@ -94,13 +95,13 @@ def index():
     if request.method == "POST":
         data_me = request.form.get("user-data")
         job_post = request.form.get("job-post")
-
+        language_choice = request.form.get("language")
         if not data_me or not job_post:
             return render_template("index.html", error="Please fill in both fields.")
 
         try:
             # 1. AI Generation
-            resume_md = generate_resume_content(data_me, job_post)
+            resume_md = generate_resume_content(data_me, job_post ,language_choice )
 
             # 2. PDF Creation
             unique_filename = f"resume_{uuid.uuid4().hex}.pdf"
