@@ -3,74 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Resume Generator</title>
-    <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
-        textarea { width: 100%; height: 150px; margin-bottom: 20px; padding: 10px; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; }
-        button { background-color: #2980b9; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #1c5980; }
-
-        .success-box {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .btn-download {
-            background-color: #28a745;
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .btn-view {
-            background-color: #17a2b8;
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin-right: 10px;
-            font-weight: bold;
-        }
-    </style>
+    <title>AI Resume Architect</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
 
-    <h1>🚀 AI Resume Builder</h1>
+<header>
+    <div class="logo-area">
+        <i class="fa-solid fa-file-invoice text-blue-600" style="font-size: 40px; color: #2980b9;"></i>
+        <h1>Resume<span style="color: #2980b9;">AI</span></h1>
+    </div>
+    <p class="subtitle">Build a targeted resume in seconds.</p>
+</header>
 
-    {% if filename %}
-    <div class="success-box">
-        <h2>✅ Resume Generated Successfully!</h2>
-        <p>Your tailored resume is ready.</p>
-        <br>
-        <a href="{{ url_for('static', filename='resumes/' + filename) }}" target="_blank" class="btn-view">👁️ View PDF</a>
+<div class="main-container">
 
-        <a href="{{ url_for('download_pdf', filename=filename) }}" class="btn-download">⬇️ Download PDF</a>
+    {% if error %}
+    <div class="error-box" style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #f87171;">
+        <strong>Error:</strong> {{ error }}
     </div>
     {% endif %}
 
-    <form method="POST" action="/">
+    {% if filename %}
+    <div class="success-box">
+        <h2>✅ Resume Generated!</h2>
+        <p>Your tailored resume is ready.</p>
+        <div class="action-buttons">
+            <a href="{{ url_for('static', filename='resumes/' + filename) }}" target="_blank" class="btn-view">
+                <i class="fa-regular fa-eye"></i> View PDF
+            </a>
+            <a href="{{ url_for('static', filename='resumes/' + filename) }}" download class="btn-download">
+                <i class="fa-solid fa-download"></i> Download
+            </a>
+        </div>
+    </div>
+    {% endif %}
 
-        <label for="user-data">Paste your Professional Data (Bio, Work History):</label>
-        <textarea name="user-data" required placeholder="My name is Alex, I am a software engineer..."></textarea>
+    <form method="POST" action="/" enctype="multipart/form-data">
 
-        <label for="job-post">Paste the Job Description:</label>
-        <textarea name="job-post" required placeholder="We are looking for a Senior Python Developer..."></textarea>
+        <div class="split-container">
 
-        <label for="language">Language for the Resume (CV)</label>
-<select name="language" id="language">
-    <option value="english">English</option>
-    <option value="french">French</option>
-    <option value="arabic">Arabic</option>
-</select>
+            <div class="column left-col">
+                <div class="col-header">
+                    <h3>1. Candidate Profile</h3>
+                    <span class="helper-text">Upload your details to get started.</span>
+                </div>
 
+                <div class="input-group">
+                    <label for="profile-pic"><i class="fa-solid fa-camera"></i> Profile Photo (Optional)</label>
+                    <input type="file" name="profile-pic" accept="image/*" class="file-input">
+                    <small style="color: #7f8c8d; font-size: 0.8rem;">Recommended: Square JPG/PNG</small>
+                </div>
 
-        <button type="submit">✨ Generate Resume</button>
+                <div class="divider"><span>AND / OR</span></div>
+
+                <div class="input-group">
+                    <label for="user-pdf"><i class="fa-solid fa-file-pdf"></i> Upload Current Resume (PDF)</label>
+                    <input type="file" name="user-pdf" accept=".pdf" class="file-input">
+                </div>
+
+                <div class="divider"><span>OR PASTE TEXT</span></div>
+
+                <div class="input-group">
+                    <label for="user-data"><i class="fa-solid fa-keyboard"></i> Manual Data Entry</label>
+                    <textarea name="user-data" placeholder="Paste your bio, work history, and skills here if you don't have a PDF..."></textarea>
+                </div>
+            </div>
+
+            <div class="column right-col">
+                <div class="col-header">
+                    <h3>2. Target Job</h3>
+                    <span class="helper-text">Paste the job description you want to win.</span>
+                </div>
+
+                <div class="input-group full-height">
+                    <label for="job-post"><i class="fa-solid fa-briefcase"></i> Job Description</label>
+                    <textarea name="job-post" required placeholder="Paste the full job description here (Responsibilities, Requirements, etc.)..." style="height: 100%; min-height: 400px;"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-bar">
+            <div class="info-text">
+                <i class="fa-solid fa-shield-halved"></i> Powered by <strong>OpenRouter AI</strong>
+            </div>
+
+            <button type="submit" class="generate-btn">
+                ✨ Generate Resume
+            </button>
+        </div>
+
     </form>
+</div>
 
 </body>
 </html>
