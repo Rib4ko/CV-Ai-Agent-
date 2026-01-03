@@ -15,22 +15,23 @@ body {
 /* --- Header --- */
 header {
     text-align: center;
-    padding: 40px 20px 20px;
+    padding: 0px 20px 20px;
     background-color: #fff;
     border-bottom: 1px solid #e0e0e0;
     margin-bottom: 30px;
 }
 
-.logo-area {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
+.main-logo {
+    height: 80px; /* Adjust this to make it bigger/smaller */
+    width: auto;  /* Maintains the 2:1 aspect ratio automatically */
+    display: block;
 }
 
-.logo {
-    height: 70px;
-    width: auto;
+.logo-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0px;
 }
 
 header h1 {
@@ -40,7 +41,7 @@ header h1 {
 
 .subtitle {
     color: #7f8c8d;
-    font-size: 1.1rem;
+    font-size: 1rem;
     margin-top: 5px;
 }
 
@@ -268,4 +269,56 @@ select {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+/* Update the bottom bar to handle the new layout */
+.bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 20px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.left-section {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Spacing between Name, Divider, and Icons */
+}
+
+.info-text {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.separator {
+    color: #dcdcdc;
+    font-size: 1.2rem;
+    font-weight: 300;
+}
+
+/* Social Icon Styling */
+.social-icons {
+    display: flex;
+    gap: 12px;
+}
+
+.social-icons a {
+    color: #95a5a6; /* Default gray */
+    font-size: 1.3rem;
+    transition: all 0.2s ease;
+}
+
+/* LinkedIn Blue on Hover */
+.social-icons a:hover .fa-linkedin {
+    color: #0077b5;
+    transform: scale(1.1);
+}
+
+/* Email Gold/Orange on Hover */
+.social-icons a:hover .fa-envelope {
+    color: #f39c12;
+    transform: scale(1.1);
 }
