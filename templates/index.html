@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Architect</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+<header>
+    <div class="logo-area">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="CV Agent Logo" class="main-logo">
+    </div>
+    <div class="auth-area" style="text-align:right; padding-right:10px;">
+        {% if session.email %}
+            <span>Signed in as <strong>{{ session.email }}</strong></span>
+            <a href="{{ url_for('logout') }}" style="margin-left:10px;">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a> | <a href="{{ url_for('register') }}">Register</a>
+        {% endif %}
+    </div>
+    <p class="subtitle">build personlized Cv for each job you applay for!</p>
+</header>
+
+<div class="main-container">
+
+    {% if error %}
+    <div class="error-box" style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #f87171;">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="flash {{ category }}" style="padding:10px; border-radius:6px; margin-bottom:12px; background:#eef2ff;">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if filename %}
+    <div class="success-box">
+        <h2>✅ Resume Generated!</h2>
+        <p>Your tailored resume is ready.</p>
+        <div class="action-buttons">
+            <a href="{{ url_for('static', filename='resumes/' + filename) }}" target="_blank" class="btn-view">
+                <i class="fa-regular fa-eye"></i> View PDF
+            </a>
+            <a href="{{ url_for('static', filename='resumes/' + filename) }}" download class="btn-download">
+                <i class="fa-solid fa-download"></i> Download
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/" enctype="multipart/form-data">
+
+        <div class="split-container">
+
+            <div class="column left-col">
+                <div class="col-header">
+                    <h3>1. Candidate Profile</h3>
+                    <span class="helper-text">Upload your details to get started.</span>
+                </div>
+
+                <div class="input-group">
+                   <label for="profile-pic"><i class="fa-solid fa-camera"></i> Profile Photo (Optional)</label>
+    <input type="file" name="profile-pic" accept="image/*" class="file-input">
+
+    <small style="color: #7f8c8d; font-size: 0.75rem; display: block; margin-top: 4px;">
+        <i class="fa-solid fa-circle-info"></i>
+        AI will auto-crop to square. Best results: JPG/PNG, min 300x300px.
+    </small>
+                </div>
+
+                <div class="divider"><span>AND / OR</span></div>
+
+                <div class="input-group">
+                    <label for="user-pdf"><i class="fa-solid fa-file-pdf"></i> Upload Current Resume (PDF)</label>
+                    <input type="file" name="user-pdf" accept=".pdf" class="file-input">
+                    {% if saved_resume %}
+                    <div class="saved-resume" style="margin-top:8px; font-size:0.9rem;">
+                        <strong>Saved resume:</strong>
+                        <a href="{{ url_for('static', filename='resumes/user_uploads/' + saved_resume) }}" target="_blank">{{ saved_resume }}</a>
+                        <form action="{{ url_for('delete_resume') }}" method="POST" style="display:inline-block; margin-left:10px;">
+                            <button type="submit" class="btn-delete" style="background:#f87171;color:white;border:none;padding:4px 8px;border-radius:4px;">Delete</button>
+                        </form>
+                        <p class="helper-text" style="margin-top:4px;">Your saved resume will be used automatically on submit unless you upload a new one.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="divider"><span>OR PASTE TEXT</span></div>
+
+                <div class="input-group">
+                    <label for="user-data"><i class="fa-solid fa-keyboard"></i> Manual Data Entry</label>
+                    <textarea name="user-data" placeholder="Paste your bio, work history, and skills here if you don't have a PDF..."></textarea>
+                </div>
+            </div>
+
+            <div class="column right-col">
+                <div class="col-header">
+                    <h3>2. Target Job</h3>
+                    <span class="helper-text">Paste the job description you want to win.</span>
+                </div>
+
+                <div class="input-group full-height">
+                    <label for="job-post"><i class="fa-solid fa-briefcase"></i> Job Description</label>
+                    <textarea name="job-post" required placeholder="Paste the full job description here (Responsibilities, Requirements, etc.)..." style="height: 100%; min-height: 400px;"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-bar">
+    <div class="left-section">
+        <div class="info-text">
+            <i class="fa-solid fa-shield-halved"></i> Developed by <strong>Amine Taghi</strong>
+        </div>
+
+        <span class="separator">|</span>
+
+        <div class="social-icons">
+            <a href="https://www.linkedin.com/in/amine-taghi-898a44253/" target="_blank" title="LinkedIn">
+                <i class="fa-brands fa-linkedin"></i>
+            </a>
+            <a href="mailto:taghi.amine05@gmail.com" title="Email Me">
+                <i class="fa-solid fa-envelope"></i>
+            </a>
+        </div>
+    </div>
+
+    <button type="submit" class="generate-btn">
+        ✨ Generate Resume
+    </button>
+</div>
+
+    </form>
+</div>
+
+</body>
+</html>
