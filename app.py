@@ -51,6 +51,9 @@ USER_UPLOADS = os.path.join(PDF_FOLDER, 'user_uploads')
 os.makedirs(PDF_FOLDER, exist_ok=True)
 os.makedirs(USER_UPLOADS, exist_ok=True)
 
+# Limit for stored resume text to avoid huge blobs
+MAX_RESUME_TEXT = int(os.getenv('MAX_RESUME_TEXT', 50000))  # chars
+
 USERS_FILE = 'users.json'
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
@@ -68,10 +71,36 @@ def get_user(user_id):
     users = load_users()
     return users.get(user_id)
 
-def set_user_resume(user_id, filename):
+def set_user_resume_text(user_id, resume_text, filename=None):
+    """Store a truncated resume text and optional original filename in the local users.json.
+    We no longer persist the binary PDF to disk.
+    """
     users = load_users()
     user = users.setdefault(user_id, {})
-    user['resume'] = filename
+    if resume_text is None:
+        # clear
+        user.pop('resume_text', None)
+        user.pop('resume_name', None)
+    else:
+        # sanitize and truncate
+        try:
+            resume_text = re.sub(r'[\x00-\x08\x0B-\x1F\x7F]', ' ', resume_text)
+        except Exception:
+            pass
+        user['resume_text'] = resume_text[:MAX_RESUME_TEXT]
+        if filename:
+            user['resume_name'] = filename
+    users[user_id] = user
+    save_users(users)
+
+
+def remove_user_resume(user_id):
+    users = load_users()
+    user = users.get(user_id, {})
+    if 'resume_text' in user:
+        del user['resume_text']
+    if 'resume_name' in user:
+        del user['resume_name']
     users[user_id] = user
     save_users(users)
 
@@ -82,6 +111,90 @@ def remove_user_resume(user_id):
         del user['resume']
     users[user_id] = user
     save_users(users)
+
+
+def extract_user_info(user_obj):
+    """Return (id, email) from various Supabase user response shapes.
+    user_obj may be a dict, or a SDK object with attributes like 'id' and 'identity_data'.
+    """
+    if not user_obj:
+        return (None, None)
+    # Dict-like
+    if isinstance(user_obj, dict):
+        uid = user_obj.get('id') or user_obj.get('user_id') or user_obj.get('sub')
+        email = user_obj.get('email')
+        if not email:
+            ident = user_obj.get('identity_data') or user_obj.get('identity')
+            if isinstance(ident, dict):
+                email = ident.get('email')
+        return (uid, email)
+
+    # Object-like
+    uid = getattr(user_obj, 'id', None) or getattr(user_obj, 'user_id', None) or getattr(user_obj, 'sub', None)
+    email = getattr(user_obj, 'email', None)
+    ident = getattr(user_obj, 'identity_data', None) or getattr(user_obj, 'identity', None)
+    if not email and isinstance(ident, dict):
+        email = ident.get('email')
+    elif not email and ident is not None:
+        email = getattr(ident, 'email', None)
+    return (uid, email)
+
+
+def safe_repr_response(obj):
+    """Return a safe string representation of an object without invoking risky IO.
+    Tries several strategies (dict -> json, response.text/json, fallback to repr)
+    and never raises.
+    """
+    try:
+        if obj is None:
+            return 'None'
+        if isinstance(obj, dict):
+            try:
+                return json.dumps(obj, default=str, ensure_ascii=False)
+            except Exception:
+                return repr(obj)
+        # Some SDK responses are objects with .json() or .text
+        if hasattr(obj, 'json'):
+            try:
+                return json.dumps(obj.json(), default=str, ensure_ascii=False)
+            except Exception:
+                pass
+        if hasattr(obj, 'text'):
+            try:
+                t = obj.text
+                if isinstance(t, bytes):
+                    try:
+                        return t.decode('utf-8', errors='replace')
+                    except Exception:
+                        return repr(t)
+                return str(t)
+            except Exception:
+                pass
+        return repr(obj)
+    except Exception as e:
+        return f"<unrepresentable response: {e}>"
+
+
+def append_debug_log(msg):
+    """Append a timestamped message to supabase_debug.log robustly.
+    Falls back to app.logger when file I/O fails. Designed to never raise.
+    """
+    try:
+        import datetime
+        ts = datetime.datetime.utcnow().isoformat() + 'Z'
+        with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+            f.write(f"[{ts}] {msg}\n")
+    except Exception:
+        try:
+            app.logger.debug("append_debug_log failed: %s", safe_repr_response(msg))
+        except Exception:
+            pass
+
+# Ensure the debug file exists early so user can see entries
+try:
+    append_debug_log('Application started')
+except Exception:
+    pass
 
 # --- HELPER: IMAGE TO BASE64 ---
 def process_profile_photo(image_file):
@@ -109,7 +222,17 @@ def process_profile_photo(image_file):
         return f"data:image/jpeg;base64,{img_str}"
 
     except Exception as e:
-        print(f"Image processing error: {e}")
+        try:
+            import traceback
+            app.logger.exception("Image processing error: %s\n%s", safe_repr_response(e), traceback.format_exc())
+        except Exception:
+            try:
+                import traceback
+                with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                    f.write("Image processing error: " + safe_repr_response(e) + "\n")
+                    f.write("Traceback:\n" + traceback.format_exc() + "\n")
+            except Exception:
+                pass
         return None
 
 
@@ -121,7 +244,17 @@ def extract_pdf_text(pdf_file):
             for page in pdf.pages:
                 text += (page.extract_text() or "") + "\n"
     except Exception as e:
-        print(f"Error reading PDF: {e}")
+        try:
+            import traceback
+            app.logger.exception("Error reading PDF: %s\n%s", safe_repr_response(e), traceback.format_exc())
+        except Exception:
+            try:
+                import traceback
+                with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                    f.write("Error reading PDF: " + safe_repr_response(e) + "\n")
+                    f.write("Traceback:\n" + traceback.format_exc() + "\n")
+            except Exception:
+                pass
         return None
     return text
 
@@ -207,7 +340,16 @@ def generate_resume_content(data_me, job):
         )
         return re.sub(r'```html|```', '', response.choices[0].message.content).strip()
     except Exception as e:
-        print(f"AI Error: {e}")
+        try:
+            import traceback
+            try:
+                app.logger.exception("AI Error: %s", safe_repr_response(e))
+            except Exception:
+                pass
+            append_debug_log("AI Error: " + safe_repr_response(e))
+            append_debug_log("Traceback: " + traceback.format_exc())
+        except Exception:
+            pass
         raise e
 
 
@@ -376,27 +518,93 @@ def login():
             flash('Auth backend not configured on server.', 'error')
             return redirect(url_for('login'))
         try:
-            res = supabase.auth.sign_in_with_password({ 'email': email, 'password': password })
-            # API may return error in different shapes
-            if getattr(res, 'error', None):
-                flash(str(res.error), 'error')
-                return redirect(url_for('login'))
-            data = res.get('data') if isinstance(res, dict) else res
-            user = None
-            if isinstance(data, dict):
-                user = data.get('user') or data.get('session', {}).get('user')
-            if not user and isinstance(res, dict):
-                user = res.get('user')
-            if user:
-                session['user_id'] = user.get('id')
-                session['email'] = user.get('email')
-                flash('Logged in.', 'success')
-                return redirect(url_for('index'))
+            # Try the modern method first, fall back to older method if not available
+            try:
+                res = supabase.auth.sign_in_with_password({ 'email': email, 'password': password })
+            except AttributeError:
+                res = supabase.auth.sign_in({ 'email': email, 'password': password })
+
+            # Safely log the raw response for troubleshooting without risking OSError
+            resp_str = safe_repr_response(res)
+            try:
+                app.logger.debug("Supabase sign_in response: %s", resp_str)
+            except Exception:
+                # Last-resort: append to a local log file (won't crash request)
+                try:
+                    with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                        f.write("Supabase sign_in response: " + resp_str + "\n")
+                except Exception:
+                    pass
+
+            # Check for explicit error field
+            err = None
+            if isinstance(res, dict):
+                err = res.get('error') or (res.get('data') or {}).get('error') or res.get('message')
             else:
-                flash('Login failed. Check credentials.', 'error')
+                err = getattr(res, 'error', None) or getattr(res, 'message', None)
+
+            if err:
+                flash(f'Login error: {err}', 'error')
                 return redirect(url_for('login'))
+
+            # Extract user in multiple possible shapes
+            user = None
+            if isinstance(res, dict):
+                data = res.get('data') or res
+                user = data.get('user') or (data.get('session') or {}).get('user') or res.get('user')
+            else:
+                user = getattr(res, 'user', None)
+                if not user:
+                    sess = getattr(res, 'session', None)
+                    if sess and isinstance(sess, dict):
+                        user = sess.get('user')
+
+            if user:
+                uid, email_addr = extract_user_info(user)
+                if uid:
+                    session['user_id'] = uid
+                    if email_addr:
+                        session['email'] = email_addr
+                    # ensure a profiles row exists for this user
+                    if SUPABASE_URL and SUPABASE_KEY:
+                        try:
+                            supabase.table('profiles').upsert({'id': uid, 'full_name': None}).execute()
+                        except Exception as e:
+                            try:
+                                app.logger.exception("Supabase profiles upsert error (login): %s", safe_repr_response(e))
+                            except Exception:
+                                try:
+                                    with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                                        f.write("Supabase profiles upsert error (login): " + safe_repr_response(e) + "\n")
+                                except Exception:
+                                    pass
+                    flash('Logged in.', 'success')
+                    return redirect(url_for('index'))
+                else:
+                        try:
+                            app.logger.warning("Login: could not extract uid from user object: %s", safe_repr_response(user))
+                        except Exception:
+                            try:
+                                with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                                    f.write("Login: could not extract uid from user object: " + safe_repr_response(user) + "\n")
+                            except Exception:
+                                pass
+                        flash('Login failed. Unexpected auth response.', 'error')
+                        return redirect(url_for('login'))
+            # If we didn't get a user, give a helpful hint about verification
+            flash('Login failed. Check credentials or verify your email if required.', 'error')
+            return redirect(url_for('login'))
         except Exception as e:
-            flash(f'Login error: {e}', 'error')
+            msg = safe_repr_response(e)
+            try:
+                app.logger.exception("Login exception: %s", msg)
+            except Exception:
+                try:
+                    with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                        f.write("Login exception: " + msg + "\n")
+                except Exception:
+                    pass
+            flash('Login error: An internal error occurred', 'error')
             return redirect(url_for('login'))
     return render_template('login.html')
 
@@ -422,10 +630,29 @@ def register():
             if isinstance(data, dict):
                 user = data.get('user') or data.get('session', {}).get('user')
             if user:
-                session['user_id'] = user.get('id')
-                session['email'] = user.get('email')
-                flash('Account created. Check your email for confirmation if required.', 'success')
-                return redirect(url_for('index'))
+                uid, email_addr = extract_user_info(user)
+                if uid:
+                    session['user_id'] = uid
+                    if email_addr:
+                        session['email'] = email_addr
+                    # ensure profile row exists for this new user
+                    if SUPABASE_URL and SUPABASE_KEY:
+                        try:
+                            supabase.table('profiles').upsert({'id': uid, 'full_name': None}).execute()
+                        except Exception as e:
+                            try:
+                                app.logger.exception("Supabase profiles upsert error (register): %s", safe_repr_response(e))
+                            except Exception:
+                                try:
+                                    with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                                        f.write("Supabase profiles upsert error (register): " + safe_repr_response(e) + "\n")
+                                except Exception:
+                                    pass
+                    flash('Account created. Check your email for confirmation if required.', 'success')
+                    return redirect(url_for('index'))
+                else:
+                    flash('Registration complete. Please verify your email if required.', 'info')
+                    return redirect(url_for('login'))
             else:
                 flash('Registration complete. Please verify your email if required.', 'info')
                 return redirect(url_for('login'))
@@ -449,11 +676,26 @@ def delete_resume():
     if not user_id:
         return redirect(url_for('index'))
     user = get_user(user_id)
-    if user and user.get('resume'):
-        path = os.path.join(USER_UPLOADS, user['resume'])
-        if os.path.exists(path):
-            os.remove(path)
+    if user and (user.get('resume_text') or user.get('resume_name')):
+        # remove local JSON reference
         remove_user_resume(user_id)
+
+        # Deactivate active resume rows in Supabase for this user
+        if SUPABASE_URL and SUPABASE_KEY:
+            try:
+                try:
+                    supabase.table('resumes').update({'is_active': False}).eq('user_id', user_id).eq('is_active', True).execute()
+                except Exception:
+                    pass
+            except Exception as e:
+                try:
+                    app.logger.exception("Supabase resume lookup/delete error: %s", safe_repr_response(e))
+                except Exception:
+                    try:
+                        with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                            f.write("Supabase resume lookup/delete error: " + safe_repr_response(e) + "\n")
+                    except Exception:
+                        pass
         flash('Saved resume removed', 'success')
     return redirect(url_for('index'))
 
@@ -464,12 +706,36 @@ def index():
     saved_resume = None
     if user_id:
         user = get_user(user_id)
-        if user and user.get('resume'):
-            saved_path = os.path.join(USER_UPLOADS, user['resume'])
-            if os.path.exists(saved_path):
-                saved_resume = user['resume']
+        # Determine if user has a saved resume text (we no longer save binary PDFs)
+        if user and user.get('resume_text'):
+            saved_resume = True
+            saved_resume_name = user.get('resume_name') or None
+        else:
+            saved_resume = None
+            saved_resume_name = None
+    else:
+        saved_resume = None
+        saved_resume_name = None
 
     if request.method == "POST":
+        # Debug: log incoming request fields to help reproduce client issues
+        try:
+            app.logger.debug(
+                "Index POST received: job_present=%s, user_data_len=%d, user_pdf_present=%s, saved_resume=%s",
+                bool(request.form.get('job-post')),
+                len(request.form.get('user-data') or ""),
+                bool(request.files.get('user-pdf') and request.files.get('user-pdf').filename),
+                bool(saved_resume)
+            )
+        except Exception:
+            pass
+
+        # Persist a short record so we can trace requests even if logging is misconfigured
+        try:
+            append_debug_log(f"Index POST received: job_present={bool(request.form.get('job-post'))}, user_data_len={len(request.form.get('user-data') or '')}, user_pdf_present={bool(request.files.get('user-pdf') and request.files.get('user-pdf').filename)}, saved_resume={bool(saved_resume)}")
+        except Exception:
+            pass
+
         job_post = request.form.get("job-post")
         text_input = request.form.get("user-data")
         user_pdf = request.files.get('user-pdf')
@@ -478,64 +744,287 @@ def index():
         final_data = ""
         # If a new PDF was uploaded, save it (and remember it for logged-in users)
         if user_pdf and user_pdf.filename != '':
-            save_name = f"{uuid.uuid4().hex}_{secure_filename(user_pdf.filename)}"
-            save_path = os.path.join(USER_UPLOADS, save_name)
-            user_pdf.save(save_path)
-            extracted = extract_pdf_text(save_path)
+            # Read PDF in-memory and extract text. Do NOT persist the binary file.
+            try:
+                pdf_bytes = user_pdf.read()
+            except Exception:
+                pdf_bytes = None
+            buffer = None
+            if pdf_bytes:
+                try:
+                    buffer = BytesIO(pdf_bytes)
+                except Exception:
+                    buffer = None
+
+            extracted = extract_pdf_text(buffer) if buffer is not None else None
             if extracted:
                 final_data = extracted
             if user_id:
-                # remember per-user
-                set_user_resume(user_id, save_name)
-                saved_resume = save_name
+                # remember per-user resume text (local JSON)
+                try:
+                    set_user_resume_text(user_id, extracted or "", filename=user_pdf.filename)
+                    saved_resume = True
+                    saved_resume_name = user_pdf.filename
+                except Exception:
+                    pass
+
+                # Prepare resume_text (sanitize and cap)
+                resume_text = (extracted or "")
+                # Remove control characters except common whitespace
+                resume_text = re.sub(r'[\x00-\x08\x0B-\x1F\x7F]', ' ', resume_text)
+                resume_text = resume_text.strip()
+                if len(resume_text) > MAX_RESUME_TEXT:
+                    resume_text = resume_text[:MAX_RESUME_TEXT]
+
+                # Persist metadata to Supabase (resumes table) and set profiles.current_resume
+                if SUPABASE_URL and SUPABASE_KEY:
+                    try:
+                        # mark previous active resumes inactive for this user
+                        try:
+                            supabase.table('resumes').update({'is_active': False}).eq('user_id', user_id).eq('is_active', True).execute()
+                        except Exception:
+                            # ignore failures for the deactivate step
+                            pass
+
+                        res = supabase.table('resumes').insert({
+                            'user_id': user_id,
+                            'original_filename': user_pdf.filename,
+                            'storage_path': None,
+                            'mime_type': user_pdf.content_type,
+                            'size': len(pdf_bytes) if pdf_bytes is not None else None,
+                            'resume_text': resume_text,
+                            'is_active': True
+                        }).execute()
+
+                        inserted = None
+                        if isinstance(res, dict):
+                            inserted = (res.get('data') or [None])[0]
+                        else:
+                            inserted = getattr(res, 'data', [None])[0] if hasattr(res, 'data') else None
+
+                        if inserted and inserted.get('id'):
+                            supabase.table('profiles').upsert({'id': user_id, 'current_resume': inserted['id']}).execute()
+                    except Exception as e:
+                        try:
+                            app.logger.exception("Supabase resume persist error: %s", safe_repr_response(e))
+                        except Exception:
+                            try:
+                                with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                                    f.write("Supabase resume persist error: " + safe_repr_response(e) + "\n")
+                            except Exception:
+                                pass
         elif user_id and saved_resume:
-            # Use persisted resume if available
-            saved_path = os.path.join(USER_UPLOADS, saved_resume)
-            extracted = extract_pdf_text(saved_path)
-            if extracted:
-                final_data = extracted
+            # Prefer persisted resume_text from Supabase (faster) and fall back to local saved text
+            final_data = None
+            if SUPABASE_URL and SUPABASE_KEY:
+                try:
+                    # fetch the active resume for this user
+                    res = supabase.table('resumes').select('resume_text').eq('user_id', user_id).eq('is_active', True).limit(1).execute()
+                    data = None
+                    if isinstance(res, dict):
+                        data = (res.get('data') or [None])[0]
+                    else:
+                        data = getattr(res, 'data', [None])[0] if hasattr(res, 'data') else None
+                    if data and data.get('resume_text'):
+                        final_data = data.get('resume_text')
+                except Exception as e:
+                    try:
+                        app.logger.exception("Supabase resume fetch error: %s", safe_repr_response(e))
+                    except Exception:
+                        try:
+                            with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                                f.write("Supabase resume fetch error: " + safe_repr_response(e) + "\n")
+                        except Exception:
+                            pass
+            if not final_data:
+                # fall back to local saved text in users.json
+                user = get_user(user_id)
+                if user and user.get('resume_text'):
+                    final_data = user.get('resume_text')
 
         if not final_data:
             final_data = text_input
 
         base64_photo = ""
         if profile_pic and profile_pic.filename != '':
-            print(f" Processing photo: {profile_pic.filename}")
+            try:
+                app.logger.debug("Processing photo: %s", safe_repr_response(profile_pic.filename))
+            except Exception:
+                pass
             base64_photo = process_profile_photo(profile_pic)
 
         if not final_data or not job_post:
-             return render_template("index.html", error="Missing data or job post.", saved_resume=saved_resume, user_id=user_id)
+            # Provide a clear flash for client-side UX and log it
+            try:
+                app.logger.debug("Generation aborted: missing data or job_post. final_data_present=%s, job_post_present=%s", bool(final_data), bool(job_post))
+            except Exception:
+                pass
+            flash('Missing data or job post. Upload a PDF or paste your resume text, and include a job description.', 'error')
+            return render_template("index.html", error="Missing data or job post.", saved_resume=saved_resume, saved_resume_name=saved_resume_name, user_id=user_id)
 
         try:
-            print(" Generating HTML...")
-            html = generate_resume_content(final_data, job_post)
+            # Persist a start-of-generation record
+            try:
+                append_debug_log(f"Starting generation: saved_resume={bool(saved_resume)}, user_pdf={getattr(user_pdf, 'filename', None)}, job_len={len(job_post or '')}, final_data_len={len(final_data) if isinstance(final_data, str) else 'N/A'}")
+            except Exception:
+                pass
 
-            # Image Injection
-            if base64_photo:
-                if '[[PROFILE_PHOTO]]' in html:
-                    print(" Placeholder found. Replacing...")
-                    html = html.replace('[[PROFILE_PHOTO]]', base64_photo)
+            try:
+                app.logger.debug("Generating HTML for job post")
+            except Exception:
+                pass
+
+            # 1) Generate HTML content
+            try:
+                # sanitize inputs to avoid null bytes and other problematic control characters
+                try:
+                    if isinstance(final_data, str) and '\x00' in final_data:
+                        append_debug_log('Sanitizing final_data: removing null bytes')
+                        final_data = final_data.replace('\x00', '')
+                    if isinstance(job_post, str) and '\x00' in job_post:
+                        append_debug_log('Sanitizing job_post: removing null bytes')
+                        job_post = job_post.replace('\x00', '')
+                except Exception:
+                    pass
+
+                html = generate_resume_content(final_data, job_post)
+                if isinstance(html, str) and '\x00' in html:
+                    append_debug_log('Sanitizing generated html: removing null bytes')
+                    html = html.replace('\x00', '')
+                append_debug_log(f"generate_resume_content OK: len_html={len(html) if html else 0}")
+            except Exception as e_gen:
+                append_debug_log("Error in generate_resume_content: " + safe_repr_response(e_gen))
+                try:
+                    import traceback
+                    append_debug_log("Traceback: " + traceback.format_exc())
+                except Exception:
+                    pass
+                raise
+
+            # 2) Image Injection
+            try:
+                if base64_photo:
+                    if '[[PROFILE_PHOTO]]' in html:
+                        try:
+                            app.logger.debug("Placeholder found. Replacing...")
+                        except Exception:
+                            pass
+                        html = html.replace('[[PROFILE_PHOTO]]', base64_photo)
+                    else:
+                        try:
+                            app.logger.debug("AI forgot placeholder. Force injecting...")
+                        except Exception:
+                            pass
+                        img_tag = f'<img src="{base64_photo}" class="profile-pic" style="width:80px; height:80px; border-radius:6px; margin-right:15px;" /><br>'
+                        html = html.replace('<h1>', f'{img_tag}<h1>')
                 else:
-                    print(" AI forgot placeholder. Force injecting...")
-                    img_tag = f'<img src="{base64_photo}" class="profile-pic" style="width:80px; height:80px; border-radius:6px; margin-right:15px;" /><br>'
-                    html = html.replace('<h1>', f'{img_tag}<h1>')
-            else:
-                html = html.replace('<img src="[[PROFILE_PHOTO]]" class="profile-pic" />', '')
+                    html = html.replace('<img src="[[PROFILE_PHOTO]]" class="profile-pic" />', '')
+                append_debug_log('Image injection complete')
+            except Exception as e_img:
+                append_debug_log('Image injection error: ' + safe_repr_response(e_img))
+                try:
+                    import traceback
+                    append_debug_log('Traceback: ' + traceback.format_exc())
+                except Exception:
+                    pass
+                raise
 
-            # Inject contact icons into contact-info block
-            html = inject_contact_icons(html)
+            # 3) Inject contact icons
+            try:
+                html = inject_contact_icons(html)
+                append_debug_log('inject_contact_icons OK')
+            except Exception as e_icons:
+                append_debug_log('inject_contact_icons error: ' + safe_repr_response(e_icons))
+                try:
+                    import traceback
+                    append_debug_log('Traceback: ' + traceback.format_exc())
+                except Exception:
+                    pass
+                raise
 
-            filename = f"resume_{uuid.uuid4().hex}.pdf"
-            path = os.path.join(PDF_FOLDER, filename)
-            create_pdf(html, path)
+            # 4) Create PDF
+            try:
+                filename = f"resume_{uuid.uuid4().hex}.pdf"
+                path = os.path.join(PDF_FOLDER, filename)
+                append_debug_log(f"Creating PDF at {path}")
+                ok = create_pdf(html, path)
+                append_debug_log(f"create_pdf returned {ok}")
+                if not ok:
+                    append_debug_log('pisa reported errors')
+                    raise Exception('PDF generation failed (pisa error)')
+            except Exception as e_pdf:
+                append_debug_log('PDF creation error: ' + safe_repr_response(e_pdf))
+                try:
+                    import traceback
+                    append_debug_log('Traceback: ' + traceback.format_exc())
+                except Exception:
+                    pass
+                raise
 
-            return render_template("index.html", filename=filename, saved_resume=saved_resume, user_id=user_id)
+            return render_template("index.html", filename=filename, saved_resume=saved_resume, saved_resume_name=saved_resume_name, user_id=user_id)
 
         except Exception as e:
-            print(f" Error: {e}")
-            return render_template("index.html", error=f"System Error: {str(e)}", saved_resume=saved_resume, user_id=user_id)
+            # Persist a short error record and full trace for debugging
+            try:
+                append_debug_log(f"Error during resume generation: {safe_repr_response(e)}; saved_resume={bool(saved_resume)}; user_pdf={getattr(user_pdf, 'filename', None)}; job_len={len(job_post) if isinstance(job_post,str) else 'N/A'}")
+            except Exception:
+                pass
 
-    return render_template("index.html", saved_resume=saved_resume, user_id=user_id)
+            tb = None
+            try:
+                import traceback
+                tb = traceback.format_exc()
+            except Exception:
+                tb = '<traceback unavailable>'
+            ctx = {
+                'final_data_len': len(final_data) if isinstance(final_data, str) else None,
+                'job_post_len': len(job_post) if isinstance(job_post, str) else None,
+                'saved_resume': bool(saved_resume),
+                'user_pdf_filename': getattr(user_pdf, 'filename', None) if user_pdf is not None else None,
+            }
+            OpenAIAuth = getattr(openai, 'AuthenticationError', None)
+            try:
+                # If this was an auth error from the AI client, surface a helpful message
+                if (OpenAIAuth and isinstance(e, OpenAIAuth)) or 'User not found' in safe_repr_response(e) or '401' in safe_repr_response(e):
+                    flash('AI service unavailable or invalid credentials. Check API configuration (OPENROUTER_API_KEY / OPENAI keys).', 'error')
+                else:
+                    flash('System Error: An internal error occurred', 'error')
+            except Exception:
+                flash('System Error: An internal error occurred', 'error')
+
+            try:
+                app.logger.exception("Error during resume generation: %s; ctx=%s\n%s", safe_repr_response(e), safe_repr_response(ctx), tb)
+            except Exception:
+                try:
+                    with open('supabase_debug.log', 'a', encoding='utf-8') as f:
+                        f.write("Error during resume generation: " + safe_repr_response(e) + "\n")
+                        f.write("Context: " + safe_repr_response(ctx) + "\n")
+                        f.write("Traceback:\n" + (tb or '') + "\n")
+                except Exception:
+                    pass
+            return render_template("index.html", error="System Error: An internal error occurred", saved_resume=saved_resume, saved_resume_name=saved_resume_name, user_id=user_id)
+
+    return render_template("index.html", saved_resume=saved_resume, saved_resume_name=saved_resume_name, user_id=user_id)
+
+@app.route('/_debug_logs')
+def _debug_logs():
+    """Return the end of supabase_debug.log for local debugging. Only enabled in debug mode."""
+    if not app.debug:
+        return "Not available", 404
+    try:
+        with open('supabase_debug.log', 'r', encoding='utf-8') as f:
+            data = f.read()
+            # Return the last ~10KB to keep response small
+            return data[-10000:] if len(data) > 0 else "(no log entries yet)", 200
+    except FileNotFoundError:
+        return "(no log file found)", 200
+    except Exception as e:
+        try:
+            app.logger.exception("Error reading debug log: %s", safe_repr_response(e))
+        except Exception:
+            pass
+        return "(error reading log)", 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

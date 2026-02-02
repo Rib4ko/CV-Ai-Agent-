@@ -59,7 +59,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="/" enctype="multipart/form-data">
+    <form id="resume-form" method="POST" action="/" enctype="multipart/form-data" data-saved-resume="{{ '1' if saved_resume else '' }}">
 
         <div class="split-container">
 
@@ -87,11 +87,13 @@
                     {% if saved_resume %}
                     <div class="saved-resume" style="margin-top:8px; font-size:0.9rem;">
                         <strong>Saved resume:</strong>
-                        <a href="{{ url_for('static', filename='resumes/user_uploads/' + saved_resume) }}" target="_blank">{{ saved_resume }}</a>
-                        <form action="{{ url_for('delete_resume') }}" method="POST" style="display:inline-block; margin-left:10px;">
-                            <button type="submit" class="btn-delete" style="background:#f87171;color:white;border:none;padding:4px 8px;border-radius:4px;">Delete</button>
-                        </form>
-                        <p class="helper-text" style="margin-top:4px;">Your saved resume will be used automatically on submit unless you upload a new one.</p>
+                        {% if saved_resume_name %}
+                            <span>{{ saved_resume_name }}</span>
+                        {% else %}
+                            <span>(Saved resume text present)</span>
+                        {% endif %}
+                        <button type="button" class="btn-delete" style="background:#f87171;color:white;border:none;padding:4px 8px;border-radius:4px; margin-left:10px;" onclick="deleteSavedResume()">Delete</button>
+                        <p class="helper-text" style="margin-top:4px;">Your saved resume text will be used automatically on submit unless you upload a new one.</p>
                     </div>
                     {% endif %}
                 </div>
@@ -142,6 +144,73 @@
 
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('resume-form');
+  if (!form) return;
+  const submitBtn = form.querySelector('.generate-btn');
+  const job = form.querySelector('[name="job-post"]');
+  const userPdf = form.querySelector('[name="user-pdf"]');
+  const userData = form.querySelector('[name="user-data"]');
+
+  form.addEventListener('submit', function(e){
+    // Clear previous client-side error
+    const old = document.getElementById('client-error');
+    if (old) old.remove();
+
+    if (!job || !job.value.trim()){
+      e.preventDefault();
+      showClientError('Please paste the target job description in the right-hand box.');
+      if (job) job.focus();
+      return;
+    }
+
+    const hasSaved = !!form.dataset.savedResume;
+    const hasPdf = userPdf && userPdf.files && userPdf.files.length > 0;
+    const hasText = userData && userData.value && userData.value.trim().length > 0;
+
+    if (!hasPdf && !hasText && !hasSaved){
+      e.preventDefault();
+      showClientError('Upload a PDF, paste your resume text, or use your saved resume first.');
+      return;
+    }
+
+    // Provide immediate UI feedback
+    if (submitBtn){
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Generating...';
+    }
+  });
+
+  function showClientError(msg){
+    const container = document.createElement('div');
+    container.id = 'client-error';
+    container.className = 'error-box';
+    container.style = 'background:#fee2e2;color:#991b1b;padding:15px;border-radius:8px;margin-bottom:20px;text-align:center;border:1px solid #f87171;';
+    container.innerHTML = '<strong>Error:</strong> ' + msg;
+    const main = document.querySelector('.main-container');
+    main.insertBefore(container, main.firstChild);
+  }
+
+  // Delete saved resume (replaces nested form to avoid invalid HTML)
+  window.deleteSavedResume = async function(){
+    if (!confirm('Delete your saved resume?')) return;
+    try {
+      const res = await fetch("{{ url_for('delete_resume') }}", { method: 'POST', credentials: 'same-origin' });
+      if (res.ok) {
+        // reload to update UI
+        window.location.reload();
+      } else {
+        showClientError('Failed to delete saved resume.');
+      }
+    } catch (err) {
+      showClientError('Failed to delete saved resume.');
+    }
+  };
+
+});
+</script>
 
 </body>
 </html>
