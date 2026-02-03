@@ -57,7 +57,18 @@
             </a>
         </div>
     </div>
-    {% endif %}
+
+    <!-- Review prompt shown after generation -->
+    <div id="review-box" class="review-box" role="dialog" aria-live="polite">
+        <button class="review-close" aria-label="Close review" onclick="closeReview()">×</button>
+        <h4>What would you like to see in next versions of this app?</h4>
+        <textarea id="review-text" placeholder="Share one or two ideas..." maxlength="500"></textarea>
+        <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+            <button id="review-submit" class="btn-view">Send feedback</button>
+            <span id="review-status" style="display:none;color:#2c3e50;font-weight:600;">Thanks!</span>
+        </div>
+    </div>
+    {% endif %} 
 
     <form id="resume-form" method="POST" action="/" enctype="multipart/form-data" data-saved-resume="{{ '1' if saved_resume else '' }}">
 
@@ -208,6 +219,46 @@ document.addEventListener('DOMContentLoaded', function(){
       showClientError('Failed to delete saved resume.');
     }
   };
+
+  // Review box handlers
+  window.closeReview = function(){
+    const box = document.getElementById('review-box');
+    if (box) box.remove();
+  }
+
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'review-submit'){
+      const txt = document.getElementById('review-text');
+      if (!txt || !txt.value.trim()){
+        showClientError('Please enter some feedback before sending.');
+        return;
+      }
+      const status = document.getElementById('review-status');
+      const submitBtn = document.getElementById('review-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+      fetch("{{ url_for('submit_review') }}", {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: txt.value.trim(), filename: '{{ filename }}' })
+      }).then(r => r.json()).then(j => {
+        if (j && j.ok){
+          if (status) status.style.display = 'inline';
+          if (txt) txt.value = '';
+          setTimeout(closeReview, 1000);
+        } else {
+          showClientError(j && j.error ? j.error : 'Failed to send feedback');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send feedback';
+        }
+      }).catch(err => {
+        showClientError('Failed to send feedback');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send feedback';
+      });
+    }
+  });
 
 });
 </script>

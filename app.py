@@ -3,7 +3,7 @@ import uuid
 import re
 import base64
 from io import BytesIO
-from flask import Flask, render_template, request, send_file, session, redirect, url_for, flash
+from flask import Flask, render_template, request, send_file, session, redirect, url_for, flash, jsonify
 from dotenv import load_dotenv
 import json
 from werkzeug.utils import secure_filename
@@ -58,6 +58,52 @@ USERS_FILE = 'users.json'
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump({}, f)
+
+# Reviews should NOT be kept locally. Use Supabase to persist reviews.
+# If a local reviews.json exists from a prior version, remove it to avoid storing reviews locally.
+try:
+    if os.path.exists('reviews.json'):
+        try:
+            os.remove('reviews.json')
+            append_debug_log('Removed local reviews.json to avoid saving reviews locally')
+        except Exception:
+            pass
+except Exception:
+    pass
+
+
+def append_review(entry):
+    """Persist a review to Supabase 'reviews' table. Returns True on success, False otherwise."""
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        append_debug_log('Supabase not configured; cannot save review')
+        return False
+    try:
+        payload = {
+            'user_id': entry.get('user_id'),
+            'review': entry.get('feedback') or entry.get('review') or '',
+            'filename': entry.get('filename'),
+            'created_at': entry.get('ts')
+        }
+        res = supabase.table('reviews').insert(payload).execute()
+        # If response is dict-shaped, check for errors
+        if isinstance(res, dict):
+            if res.get('error'):
+                append_debug_log('Supabase review insert error: ' + safe_repr_response(res.get('error')))
+                return False
+            return True
+        else:
+            # SDK-like response: assume success if no explicit error attribute
+            if getattr(res, 'error', None):
+                append_debug_log('Supabase review insert error: ' + safe_repr_response(getattr(res, 'error')))
+                return False
+            return True
+    except Exception as e:
+        append_debug_log('Supabase review exception: ' + safe_repr_response(e))
+        try:
+            app.logger.exception('Failed to save review to supabase: %s', safe_repr_response(e))
+        except Exception:
+            pass
+        return False
 
 def load_users():
     with open(USERS_FILE, 'r', encoding='utf-8') as f:
@@ -698,6 +744,36 @@ def delete_resume():
                         pass
         flash('Saved resume removed', 'success')
     return redirect(url_for('index'))
+
+
+@app.route('/submit_review', methods=['POST'])
+def submit_review():
+    try:
+        data = request.get_json(force=True)
+        feedback = (data.get('feedback') or '').strip()
+        filename = data.get('filename')
+        user_id = session.get('user_id')
+        if not feedback:
+            return jsonify({'ok': False, 'error': 'Empty feedback'}), 400
+        entry = {
+            'id': uuid.uuid4().hex,
+            'user_id': user_id,
+            'filename': filename,
+            'feedback': feedback,
+            'ts': __import__('datetime').datetime.utcnow().isoformat() + 'Z'
+        }
+        ok = append_review(entry)
+        if ok:
+            return jsonify({'ok': True}), 200
+        else:
+            return jsonify({'ok': False, 'error': 'Feedback service unavailable'}), 503
+    except Exception as e:
+        try:
+            app.logger.exception("submit_review error: %s", safe_repr_response(e))
+        except Exception:
+            pass
+        append_debug_log('submit_review error: ' + safe_repr_response(e))
+        return jsonify({'ok': False, 'error': 'Server error'}), 500
 
 
 @app.route("/", methods=["GET", "POST"])
