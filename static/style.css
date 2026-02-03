@@ -1,6 +1,6 @@
 /* --- Global Reset & Fonts --- */
 * {
-    box_sizing: border-box;
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
@@ -37,6 +37,15 @@ header {
 header h1 {
     color: #2c3e50;
     font-size: 2.2rem;
+}
+header a {
+    text-decoration : none;
+    color: inherit;
+    border: 1px solid #0077b5;
+    border-radius: 4px;
+    padding: 4px 8px;
+    background-color: #0077b5;
+    color: white;
 }
 
 .subtitle {
@@ -277,6 +286,44 @@ select {
 /* small responsive tweak */
 @media (max-width:480px){
     .auth-container{ margin:20px; padding:18px; }
+
+    /* Make generate button full-width and easier to tap on phones */
+    .generate-btn {
+        width: 100%;
+        padding: 14px 18px;
+        font-size: 1rem;
+        border-radius: 10px;
+    }
+
+    /* Stack bottom bar elements vertically */
+    .bottom-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .left-section { width: 100%; justify-content: space-between; }
+
+    /* Make action buttons stack for small screens */
+    .action-buttons {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .btn-view, .btn-download {
+        width: 100%;
+        display: inline-block;
+        text-align: center;
+    }
+
+    /* Reduce big gaps for the split container on small screens */
+    .split-container { gap: 18px; }
+
+    textarea { min-height: 160px; }
+
+    /* File input more compact */
+    .file-input { padding: 9px; font-size: 0.95rem; }
 }
 /* Review box (small square) */
 .review-box {
@@ -291,6 +338,22 @@ select {
     z-index: 9999;
     border: 1px solid #e6eef6;
 }
+
+/* Mobile: make review box a bottom sheet to avoid covering content */
+@media (max-width: 600px) {
+    .review-box {
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: auto !important;
+        border-radius: 12px 12px 0 0;
+        padding: 14px;
+        box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
+    }
+    .review-close { right: 12px; top: 8px; }
+    .review-box textarea { min-height: 90px; }
+}
+
 .review-box h4 {
     margin: 0 0 8px 0;
     font-size: 0.95rem;
