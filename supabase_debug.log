@@ -1,0 +1,229 @@
+[2026-02-02T15:08:17.790508Z] Application started
+[2026-02-02T15:08:18.176283Z] Application started
+[2026-02-02T15:08:31.910600Z] Application started
+[2026-02-02T15:08:32.202588Z] Application started
+[2026-02-02T15:10:05.955899Z] Application started
+[2026-02-02T15:10:05.965912Z] Application started
+[2026-02-02T15:10:15.228525Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=True, saved_resume=True
+[2026-02-02T15:10:17.613330Z] Starting generation: saved_resume=True, user_pdf=dev cv fr.pdf.pdf, job_len=1376, final_data_len=2103
+[2026-02-02T15:10:18.793576Z] Error during resume generation: OSError(22, 'Invalid argument'); saved_resume=True; user_pdf=dev cv fr.pdf.pdf; job_len=1376
+[2026-02-02T15:10:44.182683Z] Application started
+[2026-02-02T15:10:50.848963Z] Application started
+[2026-02-02T15:11:24.012785Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=True, saved_resume=True
+[2026-02-02T15:11:25.294845Z] Starting generation: saved_resume=True, user_pdf=dev cv fr.pdf.pdf, job_len=1376, final_data_len=2103
+[2026-02-02T15:11:25.621222Z] Error during resume generation: OSError(22, 'Invalid argument'); saved_resume=True; user_pdf=dev cv fr.pdf.pdf; job_len=1376
+[2026-02-02T15:12:10.966300Z] Application started
+[2026-02-02T15:12:11.068922Z] Application started
+[2026-02-02T15:12:26.135017Z] Application started
+[2026-02-02T15:12:26.610592Z] Application started
+[2026-02-02T15:12:44.487138Z] Application started
+[2026-02-02T15:12:44.783071Z] Application started
+[2026-02-02T15:14:10.056623Z] Application started
+[2026-02-02T15:14:18.667079Z] Application started
+[2026-02-02T15:14:39.403483Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=True, saved_resume=True
+[2026-02-02T15:14:42.039959Z] Starting generation: saved_resume=True, user_pdf=dev cv fr.pdf.pdf, job_len=1376, final_data_len=2103
+[2026-02-02T15:14:43.754489Z] Error in generate_resume_content: OSError(22, 'Invalid argument')
+[2026-02-02T15:14:43.772382Z] Traceback: Traceback (most recent call last):
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 239, in generate_resume_content
+    response = client.chat.completions.create(
+        model="google/gemini-2.0-flash-001",
+    ...<72 lines>...
+        temperature=0.4,
+    )
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_utils\_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\resources\chat\completions\completions.py", line 1192, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<47 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1294, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1067, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 871, in index
+    html = generate_resume_content(final_data, job_post)
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 317, in generate_resume_content
+    print(f"AI Error: {e}")
+    ~~~~~^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument
+
+[2026-02-02T15:14:43.773925Z] Error during resume generation: OSError(22, 'Invalid argument'); saved_resume=True; user_pdf=dev cv fr.pdf.pdf; job_len=1376
+[2026-02-02T15:15:44.809600Z] Application started
+[2026-02-02T15:15:45.192221Z] Application started
+[2026-02-02T15:15:55.270494Z] Application started
+[2026-02-02T15:15:55.616871Z] Application started
+[2026-02-02T15:16:30.151353Z] Application started
+[2026-02-02T15:16:36.225590Z] Application started
+[2026-02-02T15:16:47.868488Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=False, saved_resume=True
+[2026-02-02T15:16:48.898495Z] Starting generation: saved_resume=True, user_pdf=, job_len=1376, final_data_len=2103
+[2026-02-02T15:16:50.131534Z] AI Error: AuthenticationError("Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}")
+[2026-02-02T15:16:50.141366Z] Traceback: Traceback (most recent call last):
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 239, in generate_resume_content
+    response = client.chat.completions.create(
+        model="google/gemini-2.0-flash-001",
+    ...<72 lines>...
+        temperature=0.4,
+    )
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_utils\_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\resources\chat\completions\completions.py", line 1192, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<47 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1294, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1067, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}
+
+[2026-02-02T15:16:50.143759Z] Error in generate_resume_content: AuthenticationError("Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}")
+[2026-02-02T15:16:50.156467Z] Traceback: Traceback (most recent call last):
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 880, in index
+    html = generate_resume_content(final_data, job_post)
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 327, in generate_resume_content
+    raise e
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 239, in generate_resume_content
+    response = client.chat.completions.create(
+        model="google/gemini-2.0-flash-001",
+    ...<72 lines>...
+        temperature=0.4,
+    )
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_utils\_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\resources\chat\completions\completions.py", line 1192, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<47 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1294, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1067, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}
+
+[2026-02-02T15:16:50.158995Z] Error during resume generation: AuthenticationError("Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"); saved_resume=True; user_pdf=; job_len=1376
+[2026-02-02T15:17:36.106856Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=False, saved_resume=True
+[2026-02-02T15:17:37.268564Z] Starting generation: saved_resume=True, user_pdf=, job_len=1376, final_data_len=2103
+[2026-02-02T15:17:37.604309Z] AI Error: AuthenticationError("Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}")
+[2026-02-02T15:17:37.616734Z] Traceback: Traceback (most recent call last):
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 239, in generate_resume_content
+    response = client.chat.completions.create(
+        model="google/gemini-2.0-flash-001",
+    ...<72 lines>...
+        temperature=0.4,
+    )
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_utils\_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\resources\chat\completions\completions.py", line 1192, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<47 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1294, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1067, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}
+
+[2026-02-02T15:17:37.619532Z] Error in generate_resume_content: AuthenticationError("Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}")
+[2026-02-02T15:17:37.633670Z] Traceback: Traceback (most recent call last):
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 880, in index
+    html = generate_resume_content(final_data, job_post)
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 327, in generate_resume_content
+    raise e
+  File "c:\Users\zdxta\OneDrive\Bureau\cv3\app.py", line 239, in generate_resume_content
+    response = client.chat.completions.create(
+        model="google/gemini-2.0-flash-001",
+    ...<72 lines>...
+        temperature=0.4,
+    )
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_utils\_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\resources\chat\completions\completions.py", line 1192, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<47 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1294, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zdxta\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\openai\_base_client.py", line 1067, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}
+
+[2026-02-02T15:17:37.636012Z] Error during resume generation: AuthenticationError("Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"); saved_resume=True; user_pdf=; job_len=1376
+[2026-02-02T15:18:07.508549Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=True, saved_resume=True
+[2026-02-02T15:18:09.285018Z] Starting generation: saved_resume=True, user_pdf=dev cv fr.pdf.pdf, job_len=1376, final_data_len=2103
+[2026-02-02T15:18:16.056388Z] generate_resume_content OK: len_html=3829
+[2026-02-02T15:18:16.058631Z] Image injection complete
+[2026-02-02T15:18:16.212039Z] inject_contact_icons OK
+[2026-02-02T15:18:16.214392Z] Creating PDF at static/resumes\resume_53446575654a48ed868c1cc6b98d0a03.pdf
+[2026-02-02T15:18:16.585815Z] create_pdf returned True
+[2026-02-02T15:22:52.888405Z] Application started
+[2026-02-02T15:22:53.096161Z] Application started
+[2026-02-02T15:23:13.834780Z] Application started
+[2026-02-02T15:23:14.404892Z] Application started
+[2026-02-02T15:23:25.656516Z] Application started
+[2026-02-02T15:23:25.867395Z] Application started
+[2026-02-02T15:23:47.835132Z] Application started
+[2026-02-02T15:23:47.889324Z] Application started
+[2026-02-02T15:24:12.366173Z] Application started
+[2026-02-02T15:24:27.732656Z] Application started
+[2026-02-02T15:24:27.739067Z] Application started
+[2026-02-02T15:25:14.151755Z] Application started
+[2026-02-02T15:25:14.164902Z] Application started
+[2026-02-02T15:28:28.795729Z] Application started
+[2026-02-02T15:28:31.352604Z] Application started
+[2026-02-02T15:28:38.411502Z] Application started
+[2026-02-02T15:28:45.935235Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=True, saved_resume=False
+[2026-02-02T15:28:48.120878Z] Starting generation: saved_resume=True, user_pdf=dev cv fr.pdf.pdf, job_len=1376, final_data_len=2103
+[2026-02-02T15:28:55.880146Z] generate_resume_content OK: len_html=3878
+[2026-02-02T15:28:55.883098Z] Image injection complete
+[2026-02-02T15:28:55.906396Z] inject_contact_icons OK
+[2026-02-02T15:28:55.908808Z] Creating PDF at static/resumes\resume_4adf06f8f0984c9c94c0ca292e44f87a.pdf
+[2026-02-02T15:28:56.252047Z] create_pdf returned True
+[2026-02-03T14:13:55.391430Z] Application started
+[2026-02-03T14:13:58.963883Z] Application started
+[2026-02-03T14:16:14.479512Z] Index POST received: job_present=True, user_data_len=0, user_pdf_present=False, saved_resume=True
+[2026-02-03T14:16:15.865884Z] Starting generation: saved_resume=True, user_pdf=, job_len=1230, final_data_len=2103
+[2026-02-03T14:16:23.543961Z] generate_resume_content OK: len_html=3439
+[2026-02-03T14:16:23.544770Z] Image injection complete
+[2026-02-03T14:16:23.595328Z] inject_contact_icons OK
+[2026-02-03T14:16:23.595948Z] Creating PDF at static/resumes\resume_17bb99308c8e4525a00434e7463cd426.pdf
+[2026-02-03T14:16:23.706082Z] create_pdf returned True

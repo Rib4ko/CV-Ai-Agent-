@@ -9,6 +9,7 @@
 <body>
     <div class="auth-container">
         <h2>Create Account</h2>
+        <div class="helper">A secure account lets you save resume text and settings.</div>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, msg in messages %}
@@ -18,20 +19,68 @@
             {% endfor %}
           {% endif %}
         {% endwith %}
-        <form method="POST" action="{{ url_for('register') }}">
+        <form id="register-form" method="POST" action="{{ url_for('register') }}">
             <div class="input-group">
                 <label for="email">Email</label>
-                <input type="email" name="email" required>
+                <input id="reg-email" type="email" name="email" required>
             </div>
             <div class="input-group">
                 <label for="password">Password</label>
-                <input type="password" name="password" required>
+                <div class="password-row">
+                    <input id="reg-password" type="password" name="password" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword('reg-password')">Show</button>
+                </div>
+                <div class="password-strength"><i id="pw-bar"></i></div>
+                <div class="password-note">Use at least 8 characters. Mix letters, numbers and symbols for stronger passwords.</div>
             </div>
             <div class="input-group">
-                <button type="submit" class="btn">Create Account</button>
+                <label for="password_confirm">Confirm Password</label>
+                <input id="reg-password-confirm" type="password" required>
+            </div>
+            <div class="input-group auth-actions">
+                <button id="register-submit" type="submit" class="btn">Create Account</button>
                 <a href="{{ url_for('login') }}" class="btn-link">Already have an account?</a>
             </div>
         </form>
     </div>
+
+<script>
+(function(){
+  const form = document.getElementById('register-form');
+  const submitBtn = document.getElementById('register-submit');
+  const pw = document.getElementById('reg-password');
+  const pwc = document.getElementById('reg-password-confirm');
+  const pwbar = document.getElementById('pw-bar');
+
+  function scorePassword(s){
+    let score = 0;
+    if (!s) return 0;
+    if (s.length >= 8) score += 1;
+    if (/[A-Z]/.test(s)) score += 1;
+    if (/[0-9]/.test(s)) score += 1;
+    if (/[^A-Za-z0-9]/.test(s)) score += 1;
+    return score; // 0..4
+  }
+
+  if (pw){
+    pw.addEventListener('input', function(){
+      const sc = scorePassword(pw.value);
+      const pct = (sc/4)*100;
+      if (pwbar) pwbar.style.width = pct + '%';
+    });
+  }
+
+  if (form && submitBtn){
+    form.addEventListener('submit', function(e){
+      const pass = pw && pw.value || '';
+      const passc = pwc && pwc.value || '';
+      if (pass.length < 8){ e.preventDefault(); alert('Password must be at least 8 characters.'); return; }
+      if (pass !== passc){ e.preventDefault(); alert('Passwords do not match.'); return; }
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating...';
+    });
+  }
+})();
+</script>
 </body>
 </html>

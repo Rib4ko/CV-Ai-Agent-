@@ -8,7 +8,8 @@
 </head>
 <body>
     <div class="auth-container">
-        <h2>Login</h2>
+        <h2>Welcome back</h2>
+        <div class="helper">Sign in to generate tailored resumes and save preferences.</div>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, msg in messages %}
@@ -18,20 +19,49 @@
             {% endfor %}
           {% endif %}
         {% endwith %}
-        <form method="POST" action="{{ url_for('login') }}">
+        <form id="login-form" method="POST" action="{{ url_for('login') }}">
             <div class="input-group">
                 <label for="email">Email</label>
                 <input type="email" name="email" required>
             </div>
             <div class="input-group">
                 <label for="password">Password</label>
-                <input type="password" name="password" required>
+                <div class="password-row">
+                    <input id="password" type="password" name="password" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword('password')">Show</button>
+                </div>
             </div>
-            <div class="input-group">
-                <button type="submit" class="btn">Login</button>
+
+            <div class="input-group auth-actions">
+                <button id="login-submit" type="submit" class="btn">Login</button>
                 <a href="{{ url_for('register') }}" class="btn-link">Create account</a>
             </div>
         </form>
     </div>
+
+<script>
+// Client-side UX: disable submit while submitting and toggle password visibility
+(function(){
+  const form = document.getElementById('login-form');
+  const submitBtn = document.getElementById('login-submit');
+  if (form && submitBtn){
+    form.addEventListener('submit', function(){
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+    })
+  }
+})();
+function togglePassword(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if (el.type === 'password'){
+    el.type = 'text';
+    event && event.target && (event.target.textContent = 'Hide');
+  } else {
+    el.type = 'password';
+    event && event.target && (event.target.textContent = 'Show');
+  }
+}
+</script>
 </body>
 </html>
